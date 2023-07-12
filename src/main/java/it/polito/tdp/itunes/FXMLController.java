@@ -5,7 +5,16 @@
 package it.polito.tdp.itunes;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.ResourceBundle;
+import java.util.Set;
+
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
+
+import it.polito.tdp.itunes.model.Album;
 import it.polito.tdp.itunes.model.Model;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -34,7 +43,7 @@ public class FXMLController {
     private Button btnSet; // Value injected by FXMLLoader
 
     @FXML // fx:id="cmbA1"
-    private ComboBox<?> cmbA1; // Value injected by FXMLLoader
+    private ComboBox<Album> cmbA1; // Value injected by FXMLLoader
 
     @FXML // fx:id="txtDurata"
     private TextField txtDurata; // Value injected by FXMLLoader
@@ -48,16 +57,84 @@ public class FXMLController {
     @FXML
     void doComponente(ActionEvent event) {
     	
+    	if (this.cmbA1.getValue() == null) {
+    		txtResult.setText("Scegli un album");
+    		return;
+    	}
+    	
+    	model.braniConnessi(cmbA1.getValue());
+    	
+    	txtResult.setText("Componente connessa - " + cmbA1.getValue().toString() + '\n');
+    	txtResult.appendText("Dimensione componente = " + model.getComponenteConnessa() + '\n');
+    	txtResult.appendText("# Album componente = " + model.braniConnessi(cmbA1.getValue()));
+    	
     }
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
     	
+    	if (this.txtDurata.getText() == "") {
+    		txtResult.setText("Inserisci una durata");
+    		return;
+    	}
+    	try {
+    		Integer.parseInt(txtDurata.getText());
+    		if (Integer.parseInt(txtDurata.getText()) < 0) {
+    			txtResult.setText("Insersci un numero >= 0");
+    			return;
+    		}
+    	}
+    	catch(Exception e) {
+    		txtResult.setText("Inserisci un valore numerico");
+    		return;
+    	}
+    	
+    	SimpleGraph<Album, DefaultEdge> graph = model.creaGrafo(Integer.parseInt(txtDurata.getText()));
+    	
+    	txtResult.setText("Grafo creato con " + graph.vertexSet().size() + " vertici e " + graph.edgeSet().size() + " archi.\n\n");
+    	
+    	this.btnComponente.setDisable(false);
+    	this.btnSet.setDisable(false);
+    	
+    	List<Album> vertici = new ArrayList<>(graph.vertexSet());
+    	Collections.sort(vertici);
+    	
+    	this.cmbA1.getItems().clear();
+    	this.cmbA1.getItems().addAll(vertici);
+    	
     }
 
     @FXML
     void doEstraiSet(ActionEvent event) {
+    	
+    	if (this.cmbA1.getValue() == null) {
+    		txtResult.setText("Scegli un album");
+    		return;
+    	}
 
+    	if (this.txtX.getText() == "") {
+    		txtResult.setText("Inserisci una durata (dTOT)");
+    		return;
+    	}
+    	try {
+    		Integer.parseInt(txtX.getText());
+    		if (Integer.parseInt(txtX.getText()) < 0) {
+    			txtResult.setText("Insersci un numero >= 0");
+    			return;
+    		}
+    	}
+    	catch(Exception e) {
+    		txtResult.setText("Inserisci un valore numerico");
+    		return;
+    	}
+    	
+    	Set<Album> soluzione = model.getSequenza(cmbA1.getValue(), Integer.parseInt(txtX.getText()));
+    	
+    	txtResult.setText("SEQUENZA:\n");
+    	for (Album a : soluzione)
+    		txtResult.appendText(a.toString() + '\n');
+    	
+    	
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -74,6 +151,9 @@ public class FXMLController {
     
     public void setModel(Model model) {
     	this.model = model;
+    	
+    	this.btnComponente.setDisable(true);
+    	this.btnSet.setDisable(true);
     }
 
 }

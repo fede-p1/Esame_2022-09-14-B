@@ -13,21 +13,27 @@ import it.polito.tdp.itunes.model.Artist;
 import it.polito.tdp.itunes.model.Genre;
 import it.polito.tdp.itunes.model.MediaType;
 import it.polito.tdp.itunes.model.Playlist;
+import it.polito.tdp.itunes.model.PlaylistTracks;
 import it.polito.tdp.itunes.model.Track;
 
 public class ItunesDAO {
 	
-	public List<Album> getAllAlbums(){
-		final String sql = "SELECT * FROM Album";
+	public List<Album> getAllAlbums(int d){
+		final String sql = "SELECT album.*, AVG(milliseconds/1000) AS durata "
+				+ "FROM album, track "
+				+ "WHERE track.AlbumId = album.AlbumId "
+				+ "GROUP BY album.AlbumId "
+				+ "HAVING durata > ?";
 		List<Album> result = new LinkedList<>();
 		
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, d);
 			ResultSet res = st.executeQuery();
 
 			while (res.next()) {
-				result.add(new Album(res.getInt("AlbumId"), res.getString("Title"), 0.0));
+				result.add(new Album(res.getInt("AlbumId"), res.getString("Title"), res.getDouble("durata")));
 			}
 			conn.close();
 		} catch (SQLException e) {
@@ -131,6 +137,62 @@ public class ItunesDAO {
 
 			while (res.next()) {
 				result.add(new MediaType(res.getInt("MediaTypeId"), res.getString("Name")));
+			}
+			conn.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("SQL Error");
+		}
+		return result;
+	}
+	
+	public void setAllTracks(Map<Integer,Album> albumMap){
+		final String sql = "SELECT album.albumId, TrackId "
+				+ "FROM album, track "
+				+ "WHERE album.AlbumId = track.AlbumId "
+				+ "ORDER BY AlbumId";
+				
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			
+			ResultSet res = st.executeQuery();
+
+			while (res.next()) {
+				if (albumMap.containsKey(res.getInt("albumId"))){
+					Album album = albumMap.get(res.getInt("albumId"));
+					album.getTracksIds().add(res.getInt("TrackId"));
+				}
+				
+			}
+			conn.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("SQL Error");
+		}
+		return ;
+	}
+	
+	public List<PlaylistTracks> getAllPlaylistsTracks(){
+		final String sql = "SELECT * "
+				+ "FROM playlisttrack "
+				+ "ORDER BY PlaylistId";
+		List<PlaylistTracks> result = new LinkedList<>();
+		
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet res = st.executeQuery();
+
+			while (res.next()) {
+				if ((!result.isEmpty()) && result.get(result.size()-1).getPlaylist() == res.getInt("PlaylistId"))
+					result.get(result.size()-1).getTracks().add(res.getInt("trackId"));
+				else {
+					PlaylistTracks pt = new PlaylistTracks(res.getInt("PlaylistId"));
+					pt.getTracks().add(res.getInt("trackId"));
+					result.add(pt);
+				}
+				
 			}
 			conn.close();
 		} catch (SQLException e) {
